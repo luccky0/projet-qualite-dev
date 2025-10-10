@@ -36,3 +36,10 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+lib
+sujet.txt
+.idea
+*.sh
+*.class
+testprog
