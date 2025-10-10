@@ -5,159 +5,157 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
-/**
- * Registre central des services BRi
- * Gère l'ajout, la validation et l'accès aux services
- */
 public class ServiceRegistry {
-    // Liste thread-safe des classes de services
-    private static final List<Class<?>> servicesClasses = new ArrayList<>();
-    
-    // Map pour associer les services aux programmeurs
-    private static final Map<String, List<String>> programmerServices = new ConcurrentHashMap<>();
-    
-    // Synchronisation pour les opérations sur la liste
-    private static final Object lock = new Object();
-    
-    /**
-     * Ajoute une classe de service après contrôle de la norme BRi
-     * @param serviceClass La classe du service à ajouter
-     * @param programmeurLogin Le login du programmeur propriétaire
-     * @throws Exception Si la classe ne respecte pas la norme BRi
-     */
-    public static void addService(Class<?> serviceClass, String programmeurLogin) throws Exception {
-        validateServiceClass(serviceClass);
-        validatePackageName(serviceClass, programmeurLogin);
-        
-        synchronized (lock) {
-            servicesClasses.add(serviceClass);
-            
-            // Associer le service au programmeur
-            programmerServices.computeIfAbsent(programmeurLogin, k -> new ArrayList<>())
-                             .add(serviceClass.getSimpleName());
-        }
-        
-        System.out.println("Service ajouté : " + serviceClass.getSimpleName() + 
-                          " par " + programmeurLogin);
+    private static List<Class<?>> servicesClasses = new ArrayList<>();
+    private static Map<Class<?>, String> serviceOwners = new HashMap<>();
+    private static Map<Class<?>, Boolean> serviceStates = new HashMap<>();
+
+    // ajoute une classe de service apr�s contr�le de la norme BLTi
+    public static void addService(Class<?> serviceClass, String ownerLogin) throws Exception {
+        validateServiceClass(serviceClass, ownerLogin);
+        servicesClasses.add(serviceClass);
+        serviceOwners.put(serviceClass, ownerLogin);
+        serviceStates.put(serviceClass, true); // d�marr� par d�faut
+        System.out.println("Service ajout� : " + serviceClass.getSimpleName() + " par " + ownerLogin);
     }
     
-    /**
-     * Valide qu'une classe de service respecte la norme BRi
-     */
-    private static void validateServiceClass(Class<?> serviceClass) throws Exception {
-        // Vérifier que la classe implémente Service
+    public static void addService(Class<?> serviceClass) throws Exception {
+        addService(serviceClass, "system");
+    }
+    
+    private static void validateServiceClass(Class<?> serviceClass, String ownerLogin) throws Exception {
+        // V�rifications de la norme BRi
         if (!Service.class.isAssignableFrom(serviceClass)) {
-            throw new Exception("La classe doit implémenter l'interface Service");
+            throw new Exception("La classe doit impl�menter l'interface Service");
         }
         
-        // Vérifier que la classe n'est pas abstraite
         if (Modifier.isAbstract(serviceClass.getModifiers())) {
-            throw new Exception("La classe ne doit pas être abstraite");
+            throw new Exception("La classe ne doit pas �tre abstraite");
         }
         
-        // Vérifier que la classe est publique
         if (!Modifier.isPublic(serviceClass.getModifiers())) {
-            throw new Exception("La classe doit être publique");
+            throw new Exception("La classe doit �tre publique");
         }
         
-        // Vérifier le constructeur public (Socket)
+        // V�rifier le package (doit correspondre au login du programmeur)
+        String packageName = serviceClass.getPackage().getName();
+        if (!packageName.equals(ownerLogin) && !ownerLogin.equals("system")) {
+            throw new Exception("Le package doit porter le nom du login : " + ownerLogin);
+        }
+        
         try {
             Constructor<?> constructor = serviceClass.getConstructor(Socket.class);
             if (!Modifier.isPublic(constructor.getModifiers())) {
-                throw new Exception("Le constructeur (Socket) doit être public");
+                throw new Exception("Le constructeur (Socket) doit �tre public");
             }
         } catch (NoSuchMethodException e) {
             throw new Exception("La classe doit avoir un constructeur public (Socket)");
         }
         
-        // Vérifier la méthode toStringue()
         try {
             Method toStringueMethod = serviceClass.getMethod("toStringue");
             if (!Modifier.isStatic(toStringueMethod.getModifiers()) || 
                 !Modifier.isPublic(toStringueMethod.getModifiers()) ||
                 !toStringueMethod.getReturnType().equals(String.class)) {
-                throw new Exception("La méthode toStringue() doit être public static String");
+                throw new Exception("La m�thode toStringue() doit �tre public static String");
             }
         } catch (NoSuchMethodException e) {
-            throw new Exception("La classe doit avoir une méthode public static String toStringue()");
+            throw new Exception("La classe doit avoir une m�thode public static String toStringue()");
         }
     }
     
-    /**
-     * Valide que le package de la classe correspond au login du programmeur
-     */
-    private static void validatePackageName(Class<?> serviceClass, String programmeurLogin) throws Exception {
-        String packageName = serviceClass.getPackage().getName();
-        if (!packageName.equals(programmeurLogin)) {
-            throw new Exception("Le service doit être dans un package portant le nom du programmeur: " + programmeurLogin);
-        }
-    }
-    
-    /**
-     * Récupère la classe de service par son numéro
-     * @param numService Numéro du service (1-based)
-     * @return La classe du service ou null si non trouvée
-     */
+    // renvoie la classe de service (numService -1)	
     public static Class<?> getServiceClass(int numService) {
-        synchronized (lock) {
-            if (numService <= 0 || numService > servicesClasses.size()) {
-                return null;
-            }
-            return servicesClasses.get(numService - 1);
+        if (numService <= 0 || numService > servicesClasses.size()) {
+            return null;
         }
+        return servicesClasses.get(numService - 1);
     }
     
-    /**
-     * Génère la liste des activités présentes
-     * @return String formatée avec la liste des services
-     */
+    // liste les activit�s pr�sentes
     public static String toStringue() {
-        synchronized (lock) {
-            StringBuilder result = new StringBuilder("Activités présentes :##");
-            for (int i = 0; i < servicesClasses.size(); i++) {
+        String result = "Activit�s pr�sentes :##";
+        int compteur = 1;
+        for (Class<?> serviceClass : servicesClasses) {
+            // Afficher seulement les services d�marr�s
+            if (serviceStates.get(serviceClass)) {
                 try {
-                    Class<?> serviceClass = servicesClasses.get(i);
                     Method toStringueMethod = serviceClass.getMethod("toStringue");
                     String description = (String) toStringueMethod.invoke(null);
-                    result.append(i + 1).append(" - ").append(description).append("##");
+                    result += compteur + " - " + description + "##";
+                    compteur++;
                 } catch (Exception e) {
-                    result.append(i + 1).append(" - ").append(servicesClasses.get(i).getSimpleName()).append("##");
+                    result += compteur + " - " + serviceClass.getSimpleName() + "##";
+                    compteur++;
                 }
             }
-            return result.toString();
         }
+        return result;
     }
     
-    /**
-     * Récupère les services d'un programmeur
-     * @param programmeurLogin Login du programmeur
-     * @return Liste des noms de services
-     */
-    public static List<String> getServicesForProgrammer(String programmeurLogin) {
-        return programmerServices.getOrDefault(programmeurLogin, new ArrayList<>());
-    }
-    
-    /**
-     * Supprime un service
-     * @param serviceClass Classe du service à supprimer
-     * @param programmeurLogin Login du programmeur propriétaire
-     * @return true si supprimé avec succès
-     */
-    public static boolean removeService(Class<?> serviceClass, String programmeurLogin) {
-        synchronized (lock) {
-            boolean removed = servicesClasses.remove(serviceClass);
-            if (removed) {
-                List<String> services = programmerServices.get(programmeurLogin);
-                if (services != null) {
-                    services.remove(serviceClass.getSimpleName());
+    public static String toStringueForProgrammer(String ownerLogin) {
+        String result = "Vos services :##";
+        int compteur = 1;
+        for (Class<?> serviceClass : servicesClasses) {
+            if (serviceOwners.get(serviceClass).equals(ownerLogin)) {
+                try {
+                    Method toStringueMethod = serviceClass.getMethod("toStringue");
+                    String description = (String) toStringueMethod.invoke(null);
+                    String etat = serviceStates.get(serviceClass) ? "D�MARR�" : "ARR�T�";
+                    result += compteur + " - " + description + " [" + etat + "]##";
+                    compteur++;
+                } catch (Exception e) {
+                    result += compteur + " - " + serviceClass.getSimpleName() + "##";
+                    compteur++;
                 }
-                System.out.println("Service supprimé : " + serviceClass.getSimpleName());
             }
-            return removed;
         }
+        return result;
+    }
+    
+    public static boolean updateService(Class<?> oldClass, Class<?> newClass, String ownerLogin) throws Exception {
+        int index = servicesClasses.indexOf(oldClass);
+        if (index >= 0 && serviceOwners.get(oldClass).equals(ownerLogin)) {
+            validateServiceClass(newClass, ownerLogin);
+            servicesClasses.set(index, newClass);
+            serviceOwners.remove(oldClass);
+            serviceStates.remove(oldClass);
+            serviceOwners.put(newClass, ownerLogin);
+            serviceStates.put(newClass, true);
+            System.out.println("Service mis � jour : " + newClass.getSimpleName());
+            return true;
+        }
+        return false;
+    }
+    
+    public static boolean removeService(String serviceName, String ownerLogin) {
+        for (Class<?> serviceClass : servicesClasses) {
+            if (serviceClass.getSimpleName().equals(serviceName) && 
+                serviceOwners.get(serviceClass).equals(ownerLogin)) {
+                servicesClasses.remove(serviceClass);
+                serviceOwners.remove(serviceClass);
+                serviceStates.remove(serviceClass);
+                System.out.println("Service supprim� : " + serviceName);
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public static boolean toggleService(String serviceName, String ownerLogin) {
+        for (Class<?> serviceClass : servicesClasses) {
+            if (serviceClass.getSimpleName().equals(serviceName) && 
+                serviceOwners.get(serviceClass).equals(ownerLogin)) {
+                boolean currentState = serviceStates.get(serviceClass);
+                serviceStates.put(serviceClass, !currentState);
+                System.out.println("Service " + serviceName + " : " + (!currentState ? "D�MARR�" : "ARR�T�"));
+                return true;
+            }
+        }
+        return false;
     }
 }
