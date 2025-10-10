@@ -17,10 +17,19 @@ public class ServiceRegistry {
     // ajoute une classe de service apr�s contr�le de la norme BLTi
     public static void addService(Class<?> serviceClass, String ownerLogin) throws Exception {
         validateServiceClass(serviceClass, ownerLogin);
+        
+        // Vérifier si le service n'existe pas déjà
+        for (Class<?> existingClass : servicesClasses) {
+            if (existingClass.getName().equals(serviceClass.getName())) {
+                throw new Exception("Service " + serviceClass.getSimpleName() + " existe déjà !");
+            }
+        }
+        
         servicesClasses.add(serviceClass);
         serviceOwners.put(serviceClass, ownerLogin);
-        serviceStates.put(serviceClass, true); // d�marr� par d�faut
-        System.out.println("Service ajout� : " + serviceClass.getSimpleName() + " par " + ownerLogin);
+        serviceStates.put(serviceClass, true);
+        
+        System.out.println("Service ajouté : " + serviceClass.getSimpleName() + " par " + ownerLogin);
     }
     
     public static void addService(Class<?> serviceClass) throws Exception {

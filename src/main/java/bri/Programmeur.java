@@ -40,8 +40,11 @@ public class Programmeur {
     
     // Ajouter quelques programmeurs par défaut pour les tests
     static {
-        ajouterProgrammeur("brette", "123", "ftp://localhost/brette/");
-        ajouterProgrammeur("admin", "admin", "ftp://localhost/admin/");
-        ajouterProgrammeur("test", "test", "ftp://localhost/test/");
+        String ftpBase = "ftp://localhost:2121/";
+        ajouterProgrammeur("brette", "123", ftpBase + "brette/");
+        ajouterProgrammeur("admin", "admin", ftpBase + "admin/");
+        ajouterProgrammeur("test", "test", ftpBase + "test/");
+        ajouterProgrammeur("examples", "examples", ftpBase + "examples/");
+
     }
 }

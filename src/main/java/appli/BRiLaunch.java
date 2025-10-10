@@ -12,14 +12,6 @@ public class BRiLaunch {
         System.out.println("=== PLATEFORME BRi ===");
         System.out.println("Démarrage de la plateforme de services dynamiques BRi");
         
-        // Ajouter ServiceInversion par défaut
-        try {
-            ServiceRegistry.addService(examples.ServiceInversion.class);
-            System.out.println("Service d'exemple chargé");
-        } catch (Exception e) {
-            System.out.println("Impossible de charger le service d'exemple");
-        }
-        
         // Démarrer les serveurs
         new Thread(new ServeurProg(PORT_PROG)).start();
         new Thread(new ServeurAma(PORT_AMA)).start();

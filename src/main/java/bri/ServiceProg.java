@@ -96,7 +96,7 @@ class ServiceProg implements Runnable {
             ServiceRegistry.addService(serviceClass, prog.getLogin());
             out.println("Service ajouté avec succès !##");
         } catch (Exception e) {
-            out.println("Erreur : " + e.getMessage() + "##");
+            out.println(e);
         }
     }
     
@@ -115,7 +115,7 @@ class ServiceProg implements Runnable {
             // Cette implémentation est simplifiée
             out.println("Mise à jour effectuée (implémentation simplifiée)##");
         } catch (Exception e) {
-            out.println("Erreur : " + e.getMessage() + "##");
+            out.println(e);
         }
     }
     
