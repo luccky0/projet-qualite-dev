@@ -3,18 +3,15 @@ package examples;
 import java.io.*;
 import java.net.*;
 import java.util.List;
-
 import bri.Service;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-
 import org.w3c.dom.*;
 import org.json.JSONObject;
 
 public class ServiceAnalyseDeFichier implements Service {
 
     private final Socket client;
-
     private static final List<String> typeAnalyse = List.of("résumé", "Détecter des erreurs", "transformationsJSON", "tout");
 
     public ServiceAnalyseDeFichier(Socket client) {
@@ -28,13 +25,26 @@ public class ServiceAnalyseDeFichier implements Service {
             PrintWriter out = new PrintWriter(client.getOutputStream(), true);
 
             out.println("=== SERVICE D'ANALYSE DE FICHIER ===");
-            out.println("Envoyez le fichier XML à analyser (terminez par une ligne vide) :");
+            out.println("Souhaitez-vous :");
+            out.println("1) Envoyer le contenu XML manuellement");
+            out.println("2) Fournir un lien FTP vers un fichier XML");
+            String choix = in.readLine();
 
-            Document doc = lireLeFichier(in, out);
+            Document doc = null;
+
+            if ("2".equals(choix)) {
+                out.println("Entrez le lien FTP complet (ex: ftp://user:pass@localhost/fichiers/test.xml) :");
+                String ftpUrl = in.readLine();
+                doc = lireFichierDepuisFTP(ftpUrl, out);
+            } else {
+                out.println("Envoyez le fichier XML à analyser (terminez par une ligne vide) :");
+                doc = lireLeFichier(in, out);
+            }
+
             if (doc != null) {
                 analyserFichierXML(doc, out, in);
             } else {
-                out.println("Le contenu reçu n'est pas un XML valide.");
+                out.println("Le fichier XML n'a pas pu être lu ou n'est pas valide.");
             }
 
         } catch (IOException e) {
@@ -52,14 +62,12 @@ public class ServiceAnalyseDeFichier implements Service {
         String line;
 
         try {
-            // Lecture du contenu XML envoyé par le client
             while ((line = in.readLine()) != null && !line.isEmpty()) {
                 xmlContent.append(line).append("\n");
             }
 
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
-
             Document doc = builder.parse(
                     new ByteArrayInputStream(xmlContent.toString().getBytes())
             );
@@ -73,6 +81,25 @@ public class ServiceAnalyseDeFichier implements Service {
         }
     }
 
+    public static Document lireFichierDepuisFTP(String ftpUrl, PrintWriter out) {
+        try {
+            URL url = new URL(ftpUrl);
+            URLConnection connection = url.openConnection();
+
+            try (InputStream input = connection.getInputStream()) {
+                DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+                DocumentBuilder builder = factory.newDocumentBuilder();
+                Document doc = builder.parse(input);
+                out.println("Fichier XML récupéré avec succès depuis le serveur FTP !");
+                return doc;
+            }
+
+        } catch (Exception e) {
+            out.println("Erreur lors de la récupération du fichier FTP : " + e.getMessage());
+            return null;
+        }
+    }
+
     public static void analyserFichierXML(Document doc, PrintWriter out, BufferedReader in) throws IOException {
         out.println("Quel type d'analyse voulez-vous effectuer ?");
         for (String type : typeAnalyse) {
@@ -80,33 +107,49 @@ public class ServiceAnalyseDeFichier implements Service {
         }
 
         String type = in.readLine();
+        String resultat;
 
         switch (type) {
             case "résumé":
-                resumeFichier(doc, out);
+                resultat = resumeFichier(doc);
                 break;
             case "Détecter des erreurs":
-                detecterErreurs(doc, out);
+                resultat = detecterErreurs(doc);
                 break;
             case "transformationsJSON":
-                transformerEnJSON(doc, out);
+                resultat = transformerEnJSON(doc);
                 break;
             case "tout":
-                resumeFichier(doc, out);
-                detecterErreurs(doc, out);
-                transformerEnJSON(doc, out);
+                StringBuilder sb = new StringBuilder();
+                sb.append(resumeFichier(doc)).append("\n\n");
+                sb.append(detecterErreurs(doc)).append("\n\n");
+                sb.append(transformerEnJSON(doc));
+                resultat = sb.toString();
                 break;
             default:
-                out.println("Type d'analyse inconnu.");
+                resultat = "Type d'analyse inconnu.";
                 break;
         }
+
+        sendEmail(resultat, out, in);
     }
 
-    public static void resumeFichier(Document doc, PrintWriter out) {
+    private static void sendEmail(String resultat, PrintWriter out, BufferedReader in) throws IOException {
+        out.println("Veuillez renseigner votre email pour recevoir le résultat de l'analyse :");
+        String email = in.readLine();
+        out.println("Le résultat sera envoyé à " + email + " (simulation).");
+        out.println("----- DÉBUT DU RAPPORT -----");
+        out.println(resultat);
+        out.println("----- FIN DU RAPPORT -----");
+    }
+
+    public static String resumeFichier(Document doc) {
+        StringWriter sw = new StringWriter();
+        PrintWriter out = new PrintWriter(sw);
+
         try {
             Element racine = doc.getDocumentElement();
             out.println("La racine du fichier est '" + racine.getTagName() + "'.");
-
             NodeList enfants = racine.getChildNodes();
             int nbElements = 0;
             StringBuilder nomsBalises = new StringBuilder();
@@ -120,13 +163,12 @@ public class ServiceAnalyseDeFichier implements Service {
             }
 
             if (nbElements > 0) {
-                nomsBalises.setLength(nomsBalises.length() - 2); // retirer la dernière virgule
+                nomsBalises.setLength(nomsBalises.length() - 2);
                 out.println("Elle contient " + nbElements + " balises enfants : " + nomsBalises + ".");
             } else {
                 out.println("Elle ne contient pas de balises enfants.");
             }
 
-            // Détail de chaque balise
             for (int i = 0; i < enfants.getLength(); i++) {
                 Node n = enfants.item(i);
                 if (n.getNodeType() == Node.ELEMENT_NODE) {
@@ -142,11 +184,17 @@ public class ServiceAnalyseDeFichier implements Service {
             }
 
         } catch (Exception e) {
-            out.println("Impossible de générer le résumé : erreur interne.");
+            out.println("Erreur lors du résumé : " + e.getMessage());
         }
+
+        out.flush();
+        return sw.toString();
     }
 
-    public static void detecterErreurs(Document doc, PrintWriter out) {
+    public static String detecterErreurs(Document doc) {
+        StringWriter sw = new StringWriter();
+        PrintWriter out = new PrintWriter(sw);
+
         try {
             Element racine = doc.getDocumentElement();
             NodeList enfants = racine.getChildNodes();
@@ -165,14 +213,21 @@ public class ServiceAnalyseDeFichier implements Service {
             }
 
             if (!erreur) {
-                out.println("Aucune erreur détectée : toutes les balises enfants ont une valeur.");
+                out.println("Aucune erreur détectée.");
             }
+
         } catch (Exception e) {
-            out.println("Erreur lors de la détection d'erreurs : " + e.getMessage());
+            out.println("Erreur lors de la détection : " + e.getMessage());
         }
+
+        out.flush();
+        return sw.toString();
     }
 
-    public static void transformerEnJSON(Document doc, PrintWriter out) {
+    public static String transformerEnJSON(Document doc) {
+        StringWriter sw = new StringWriter();
+        PrintWriter out = new PrintWriter(sw);
+
         try {
             Element racine = doc.getDocumentElement();
             JSONObject json = new JSONObject();
@@ -190,7 +245,10 @@ public class ServiceAnalyseDeFichier implements Service {
             out.println(json.toString(2));
 
         } catch (Exception e) {
-            out.println("Erreur lors de la transformation en JSON : " + e.getMessage());
+            out.println("Erreur JSON : " + e.getMessage());
         }
+
+        out.flush();
+        return sw.toString();
     }
 }
