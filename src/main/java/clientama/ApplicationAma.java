@@ -38,32 +38,21 @@ public class ApplicationAma {
 
                 // 3. Boucle d'interaction avec le service choisi
                 while (true) {
-                    // Lire le message du service
-                    String message = sin.readLine();
-                    if (message == null) {
-                        System.out.println("Service terminé.");
-                        break;
+                    // Lire le message du serveur
+                    line = sin.readLine();
+                    if (line == null) {
+                        break; // Connexion fermée par le serveur
                     }
-                    
-                    System.out.println(message);
-                    
-                    // Si c'est une question du service, répondre
-                    if (message.contains("Tapez") || message.contains("Entrez") || 
-                        message.contains("Saisissez") || message.contains("?")) {
-                        
-                        String reponse = clavier.readLine();
-                        if (reponse == null) {
-                            break;
-                        }
-                        sout.println(reponse);
-                        
-                        // Pour certains services, il peut y avoir une réponse finale
-                        String resultat = sin.readLine();
-                        if (resultat != null) {
-                            System.out.println("Résultat : " + resultat);
-                        }
-                        break; // Service simple terminé après un échange
-                    }
+
+                    // Afficher le message (remplacer ## par des retours à la ligne)
+                    System.out.println(line.replaceAll("##", "\n"));
+
+
+
+                    // Lire la réponse de l'utilisateur et l'envoyer
+                    String reponse = clavier.readLine();
+                    sout.println(reponse);
+
                 }
             }
 

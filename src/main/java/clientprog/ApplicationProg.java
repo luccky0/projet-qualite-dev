@@ -39,10 +39,7 @@ public class ApplicationProg {
                 System.out.println(line.replaceAll("##", "\n"));
                 
                 // Si le message se termine par ":", c'est une demande de saisie
-                if (line.endsWith(":") || line.contains("Votre choix :") || 
-                    line.contains("Login :") || line.contains("Mot de passe :") ||
-                    line.contains("Nom de") || line.contains("Nouvelle") || 
-                    line.contains("classe")) {
+                if (line.endsWith(":")) {
                     
                     // Lire la réponse de l'utilisateur et l'envoyer
                     String reponse = clavier.readLine();

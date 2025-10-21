@@ -11,6 +11,7 @@ class ServiceProg implements Runnable {
     ServiceProg(Socket socket) {
         client = socket;
     }
+    String responce = "";
 
     public void run() {
         try {
@@ -29,12 +30,14 @@ class ServiceProg implements Runnable {
                 client.close();
                 return;
             }
-            
-            out.println("Bienvenue " + login + " !##");
+
             
             // Menu principal
+
             while (true) {
-                String menu = "=== MENU PROGRAMMEUR ===##" +
+                responce += "##";
+                String menu = responce +
+                             "=== MENU PROGRAMMEUR ===##" +
                              "1 - Fournir un nouveau service##" +
                              "2 - Mettre à jour un service##" +
                              "3 - Changer l'adresse FTP##" +
@@ -43,7 +46,9 @@ class ServiceProg implements Runnable {
                              "6 - Voir mes services##" +
                              "0 - Quitter##" +
                              "Votre choix :";
-                
+
+                responce = "";
+
                 out.println(menu);
                 String choix = in.readLine();
                 
@@ -71,15 +76,15 @@ class ServiceProg implements Runnable {
                         voirServices(out, prog);
                         break;
                     default:
-                        out.println("Choix invalide##");
+                        responce = "Choix invalide##";
                 }
             }
-            
-            out.println("Au revoir !##");
+
+            responce =  "Au revoir !##";
             client.close();
             
         } catch (Exception e) {
-            System.err.println("Erreur dans ServiceProg: " + e.getMessage());
+            System.err.println("Erreur dans ServiceProg: " + e.toString());
             try { client.close(); } catch (IOException e2) {}
         }
     }
@@ -94,9 +99,9 @@ class ServiceProg implements Runnable {
             Class<?> serviceClass = urlcl.loadClass(className);
             
             ServiceRegistry.addService(serviceClass, prog.getLogin());
-            out.println("Service ajouté avec succès !##");
+            responce = "Service ajouté avec succès !##";
         } catch (Exception e) {
-            out.println(e);
+            responce = e.toString() ;
         }
     }
     
@@ -113,9 +118,9 @@ class ServiceProg implements Runnable {
             
             // Trouver l'ancienne classe
             // Cette implémentation est simplifiée
-            out.println("Mise à jour effectuée (implémentation simplifiée)##");
+            responce = "Mise à jour effectuée (implémentation simplifiée)##";
         } catch (Exception e) {
-            out.println(e);
+            responce = e.toString() ;
         }
     }
     
@@ -123,7 +128,7 @@ class ServiceProg implements Runnable {
         out.println("Nouvelle adresse FTP :");
         String newFtpUrl = in.readLine();
         prog.setFtpUrl(newFtpUrl);
-        out.println("Adresse FTP mise à jour##");
+        responce = "Adresse FTP mise à jour##";
     }
     
     private void toggleService(BufferedReader in, PrintWriter out, Programmeur prog) throws Exception {
@@ -131,9 +136,9 @@ class ServiceProg implements Runnable {
         String serviceName = in.readLine();
         boolean success = ServiceRegistry.toggleService(serviceName, prog.getLogin());
         if (success) {
-            out.println("État du service modifié##");
+            responce = "État du service modifié##";
         } else {
-            out.println("Service non trouvé##");
+            responce = "Service non trouvé##";
         }
     }
     
@@ -142,14 +147,14 @@ class ServiceProg implements Runnable {
         String serviceName = in.readLine();
         boolean success = ServiceRegistry.removeService(serviceName, prog.getLogin());
         if (success) {
-            out.println("Service supprimé##");
+            responce = "Service supprimé##";
         } else {
-            out.println("Service non trouvé##");
+            responce = "Service non trouvé##";
         }
     }
     
     private void voirServices(PrintWriter out, Programmeur prog) {
-        out.println(ServiceRegistry.toStringueForProgrammer(prog.getLogin()));
+        responce = ServiceRegistry.toStringueForProgrammer(prog.getLogin());
     }
 
     public void start() {

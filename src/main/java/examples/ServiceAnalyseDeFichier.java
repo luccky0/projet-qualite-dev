@@ -24,12 +24,12 @@ public class ServiceAnalyseDeFichier implements Service {
             BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
             PrintWriter out = new PrintWriter(client.getOutputStream(), true);
 
-            out.println("=== SERVICE D'ANALYSE DE FICHIER ===");
-            out.println("Souhaitez-vous :");
-            out.println("1) Envoyer le contenu XML manuellement");
-            out.println("2) Fournir un lien FTP vers un fichier XML");
+            out.println("=== SERVICE D'ANALYSE DE FICHIER ===##" +
+                    "1) Envoyer le contenu XML manuellement##" +
+                    "2) Fournir un lien FTP vers un fichier XML##" +
+                    "Votre choix :"
+            );
             String choix = in.readLine();
-
             Document doc = null;
 
             if ("2".equals(choix)) {
@@ -62,9 +62,12 @@ public class ServiceAnalyseDeFichier implements Service {
         String line;
 
         try {
-            while ((line = in.readLine()) != null && !line.isEmpty()) {
-                xmlContent.append(line).append("\n");
-            }
+
+            xmlContent.append(in.readLine());
+
+//            while ((line = in.readLine()) != null && !line.isEmpty()) {
+//                xmlContent.append(line).append("\n");
+//            }
 
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
@@ -250,5 +253,8 @@ public class ServiceAnalyseDeFichier implements Service {
 
         out.flush();
         return sw.toString();
+    }
+    public static String toStringue() {
+        return "Analyse d'un fichier XML";
     }
 }
