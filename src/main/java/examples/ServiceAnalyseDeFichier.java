@@ -2,8 +2,21 @@ package examples;
 
 import java.io.*;
 import java.net.*;
+import java.util.Hashtable;
 import java.util.List;
+import java.util.Properties;
+
 import bri.Service;
+import javax.naming.directory.*;
+import javax.mail.Message;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.InitialDirContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.*;
@@ -64,10 +77,6 @@ public class ServiceAnalyseDeFichier implements Service {
         try {
 
             xmlContent.append(in.readLine());
-
-//            while ((line = in.readLine()) != null && !line.isEmpty()) {
-//                xmlContent.append(line).append("\n");
-//            }
 
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
@@ -137,13 +146,60 @@ public class ServiceAnalyseDeFichier implements Service {
         sendEmail(resultat, out, in);
     }
 
-    private static void sendEmail(String resultat, PrintWriter out, BufferedReader in) throws IOException {
-        out.println("Veuillez renseigner votre email pour recevoir le résultat de l'analyse :");
-        String email = in.readLine();
-        out.println("Le résultat sera envoyé à " + email + " (simulation).");
-        out.println("----- DÉBUT DU RAPPORT -----");
-        out.println(resultat);
-        out.println("----- FIN DU RAPPORT -----");
+    public static String getMX(String email) throws NamingException {
+        String domain = email.substring(email.indexOf('@') + 1);
+
+        javax.naming.directory.DirContext ctx = new javax.naming.directory.InitialDirContext();
+        javax.naming.directory.Attributes attrs = ctx.getAttributes(domain, new String[]{"MX"});
+        javax.naming.directory.Attribute attr = attrs.get("MX");
+
+        if (attr == null) return domain; // fallback
+
+        // choisir le MX avec la plus petite priorité
+        String bestMX = null;
+        int bestPriority = Integer.MAX_VALUE;
+        javax.naming.NamingEnumeration<?> en = attr.getAll();
+        while (en.hasMore()) {
+            String record = (String) en.next();
+            String[] parts = record.split("\\s+");
+            if (parts.length >= 2) {
+                int priority = Integer.parseInt(parts[0]);
+                String host = parts[1].endsWith(".") ? parts[1].substring(0, parts[1].length()-1) : parts[1];
+                if (priority < bestPriority) {
+                    bestPriority = priority;
+                    bestMX = host;
+                }
+            }
+        }
+        return bestMX;
+    }
+
+    
+    public static void sendEmail(String resultat, PrintWriter out, BufferedReader in) {
+        try {
+            out.println("Veuillez renseigner votre email pour recevoir le résultat de l'analyse :");
+            String email = in.readLine();
+
+            String mxHost = getMX(email); 
+
+            Properties props = new Properties();
+            props.put("mail.smtp.host", mxHost);
+            props.put("mail.smtp.port", "25");
+
+            Session session = Session.getInstance(props, null);
+            Message message = new MimeMessage(session);
+            message.setFrom(new InternetAddress("ServiceAnnalyse@defichierXML.com"));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(email));
+            message.setSubject("Résultat de l'analyse de votre fichier XML");
+            message.setText(resultat);
+
+            Transport.send(message);
+
+            out.println("Email envoyé avec succès à " + email);
+
+        } catch (Exception e) {
+            out.println("Erreur lors de l'envoi de l'email : " + e.getMessage());
+        }
     }
 
     public static String resumeFichier(Document doc) {
