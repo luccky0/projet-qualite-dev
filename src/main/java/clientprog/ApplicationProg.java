@@ -27,21 +27,21 @@ public class ApplicationProg {
 
             String line;
             
-            // Boucle de communication avec le serveur
+        
             while (true) {
-                // Lire le message du serveur
+                
                 line = sin.readLine();
                 if (line == null) {
-                    break; // Connexion fermée par le serveur
+                    break;
                 }
                 
-                // Afficher le message (remplacer ## par des retours à la ligne)
+        
                 System.out.println(line.replaceAll("##", "\n"));
                 
                 // Si le message se termine par ":", c'est une demande de saisie
                 if (line.endsWith(":")) {
                     
-                    // Lire la réponse de l'utilisateur et l'envoyer
+                    
                     String reponse = clavier.readLine();
                     sout.println(reponse);
                     

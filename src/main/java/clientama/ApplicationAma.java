@@ -27,29 +27,27 @@ public class ApplicationAma {
 
             String line;
 
-            // 1. Recevoir et afficher le menu des services
+            
             line = sin.readLine();
             if (line != null) {
                 System.out.println(line.replaceAll("##", "\n"));
                 
-                // 2. Saisir et envoyer le choix du service
+                
                 String choix = clavier.readLine();
                 sout.println(choix);
 
-                // 3. Boucle d'interaction avec le service choisi
+                
                 while (true) {
-                    // Lire le message du serveur
+                    
                     line = sin.readLine();
                     if (line == null) {
-                        break; // Connexion fermée par le serveur
+                        break; 
                     }
 
-                    // Afficher le message (remplacer ## par des retours à la ligne)
+                    
                     System.out.println(line.replaceAll("##", "\n"));
 
-
-
-                    // Lire la réponse de l'utilisateur et l'envoyer
+                    
                     String reponse = clavier.readLine();
                     sout.println(reponse);
 
