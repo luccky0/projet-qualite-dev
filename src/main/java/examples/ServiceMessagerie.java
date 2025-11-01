@@ -8,8 +8,15 @@ import java.util.*;
 public class ServiceMessagerie implements Service {
 
     private final Socket client;
-    private static final Map<String, List<String>> messages = new HashMap<>();
+    private static final Map<String, List<Message>> messages = new HashMap<>();
+    private static final Map<String, String> comptes = new HashMap<>(); // login -> mdp
     private String response = "";
+
+    static {
+        comptes.put("Nathan", "1111");
+        comptes.put("Luc", "2222");
+        comptes.put("Mathias", "3333");
+    }
 
     public ServiceMessagerie(Socket socket) {
         this.client = socket;
@@ -21,12 +28,28 @@ public class ServiceMessagerie implements Service {
             BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
             PrintWriter out = new PrintWriter(client.getOutputStream(), true);
 
+            // === Authentification interne ===
+            out.println("=== SERVICE DE MESSAGERIE INTERNE ===##Login :");
+            String login = in.readLine();
+
+            out.println("Mot de passe :");
+            String mdp = in.readLine();
+
+            if (!authentifier(login, mdp)) {
+                out.println("Authentification échouée##");
+                client.close();
+                return;
+            }
+
+            response = "Connexion réussie ! Bienvenue " + login + "##";
+
+            // === Menu principal ===
             while (true) {
                 response += "##";
                 String menu = response +
-                        "=== SERVICE DE MESSAGERIE INTERNE ===##" +
+                        "=== MENU MESSAGERIE ===##" +
                         "1 - Envoyer un message##" +
-                        "2 - Lire mes messages##" +
+                        "2 - Lire une conversation##" +
                         "0 - Quitter##" +
                         "Votre choix :";
 
@@ -41,10 +64,10 @@ public class ServiceMessagerie implements Service {
 
                 switch (choix.trim()) {
                     case "1":
-                        envoyerMessage(in, out);
+                        envoyerMessage(in, out, login);
                         break;
                     case "2":
-                        lireMessages(in, out);
+                        lireConversation(in, out, login);
                         break;
                     default:
                         response = "Choix invalide##";
@@ -60,51 +83,60 @@ public class ServiceMessagerie implements Service {
         }
     }
 
-    private void envoyerMessage(BufferedReader in, PrintWriter out) throws IOException {
-        out.println("Votre pseudo (expéditeur) :");
-        String expediteur = in.readLine();
+    private boolean authentifier(String login, String mdp) {
+        return comptes.containsKey(login) && comptes.get(login).equals(mdp);
+    }
 
+    private void envoyerMessage(BufferedReader in, PrintWriter out, String expediteur) throws IOException {
         out.println("Pseudo du destinataire :");
         String destinataire = in.readLine();
 
         out.println("Message :");
         String contenu = in.readLine();
 
-        if (expediteur == null || destinataire == null || contenu == null ||
-                expediteur.isBlank() || destinataire.isBlank() || contenu.isBlank()) {
+        if (destinataire == null || contenu == null || destinataire.isBlank() || contenu.isBlank()) {
             response = "Erreur : champs vides##";
             return;
         }
 
+        Message msg = new Message(expediteur, destinataire, contenu, new Date());
+
         synchronized (messages) {
-            messages.computeIfAbsent(destinataire, k -> new ArrayList<>())
-                    .add("De " + expediteur + " : " + contenu);
+            messages.computeIfAbsent(expediteur, k -> new ArrayList<>()).add(msg);
+            messages.computeIfAbsent(destinataire, k -> new ArrayList<>()).add(msg);
         }
 
         response = "Message envoyé à " + destinataire + "##";
     }
 
-    private void lireMessages(BufferedReader in, PrintWriter out) throws IOException {
-        out.println("Entrez votre pseudo :");
-        String pseudo = in.readLine();
+    private void lireConversation(BufferedReader in, PrintWriter out, String login) throws IOException {
+        out.println("Avec qui voulez-vous voir la conversation ?");
+        String autre = in.readLine();
 
-        if (pseudo == null || pseudo.isBlank()) {
-            response = "Pseudo invalide##";
+        List<Message> msgs;
+        synchronized (messages) {
+            msgs = messages.getOrDefault(login, new ArrayList<>());
+        }
+
+        if (msgs.isEmpty()) {
+            response = "Aucun message trouvé.##";
             return;
         }
 
-        List<String> recu;
-        synchronized (messages) {
-            recu = messages.remove(pseudo);
+        StringBuilder sb = new StringBuilder("=== Conversation avec " + autre + " ===##");
+
+        boolean found = false;
+        for (Message msg : msgs) {
+            if ((msg.expediteur.equals(login) && msg.destinataire.equals(autre)) ||
+                    (msg.expediteur.equals(autre) && msg.destinataire.equals(login))) {
+                sb.append(msg).append("##");
+                found = true;
+            }
         }
 
-        if (recu == null || recu.isEmpty()) {
-            response = "Aucun message pour " + pseudo + ".##";
+        if (!found) {
+            response = "Aucune conversation trouvée avec " + autre + "##";
         } else {
-            StringBuilder sb = new StringBuilder("=== Vos messages ===##");
-            for (String msg : recu) {
-                sb.append(msg).append("##");
-            }
             response = sb.toString();
         }
     }
@@ -115,5 +147,25 @@ public class ServiceMessagerie implements Service {
 
     public void start() {
         new Thread(this).start();
+    }
+
+    // Petite classe interne pour représenter un message
+    private static class Message {
+        String expediteur;
+        String destinataire;
+        String contenu;
+        Date date;
+
+        Message(String e, String d, String c, Date date) {
+            this.expediteur = e;
+            this.destinataire = d;
+            this.contenu = c;
+            this.date = date;
+        }
+
+        @Override
+        public String toString() {
+            return "[" + date + "] " + expediteur + " → " + destinataire + " : " + contenu;
+        }
     }
 }
