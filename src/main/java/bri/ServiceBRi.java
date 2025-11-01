@@ -30,11 +30,11 @@ class ServiceBRi implements Runnable {
             
             Class<?> serviceClass = ServiceRegistry.getServiceClass(choix);
             if (serviceClass != null) {
-                // Créer une instance du service par réflexion
+                
                 Constructor<?> constructor = serviceClass.getConstructor(Socket.class);
                 Object serviceInstance = constructor.newInstance(client);
                 
-                // Vérifier que c'est bien un Service
+                
                 if (serviceInstance instanceof Service) {
                     Service service = (Service) serviceInstance;
                     // Lancer le service dans un thread séparé

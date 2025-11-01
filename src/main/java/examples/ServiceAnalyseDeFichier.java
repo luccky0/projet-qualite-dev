@@ -145,7 +145,7 @@ public class ServiceAnalyseDeFichier implements Service {
 
         sendEmail(resultat, out, in);
     }
-
+    
     public static String getMX(String email) throws NamingException {
         String domain = email.substring(email.indexOf('@') + 1);
 
@@ -153,9 +153,8 @@ public class ServiceAnalyseDeFichier implements Service {
         javax.naming.directory.Attributes attrs = ctx.getAttributes(domain, new String[]{"MX"});
         javax.naming.directory.Attribute attr = attrs.get("MX");
 
-        if (attr == null) return domain; // fallback
+        if (attr == null) return domain; 
 
-        // choisir le MX avec la plus petite priorité
         String bestMX = null;
         int bestPriority = Integer.MAX_VALUE;
         javax.naming.NamingEnumeration<?> en = attr.getAll();

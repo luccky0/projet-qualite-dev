@@ -29,7 +29,7 @@ public class Programmeur {
         return null;
     }
     
-    // Getters
+    
     public String getLogin() { return login; }
     public String getFtpUrl() { return ftpUrl; }
     
@@ -38,7 +38,7 @@ public class Programmeur {
         System.out.println("URL FTP mise à jour pour " + login + " : " + ftpUrl);
     }
     
-    // Ajouter quelques programmeurs par défaut pour les tests
+
     static {
         String ftpBase = "ftp://localhost:2121/";
         ajouterProgrammeur("brette", "123", ftpBase + "brette/");

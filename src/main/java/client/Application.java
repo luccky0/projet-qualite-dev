@@ -32,23 +32,23 @@ class Application {
 			System.out.println("Connect� au serveur " + s.getInetAddress() + ":"+ s.getPort());
 			
 			String line;
-		// menu et choix du service
+		
 			line = sin.readLine();
 			System.out.println(line.replaceAll("##", "\n"));
-		// saisie/envoie du choix
+		
 			sout.println(clavier.readLine());
 			
-		// r�ception/affichage de la question
+		
 			System.out.println(sin.readLine());
-		// saisie clavier/envoie au service de la r�ponse
+		
 			sout.println(clavier.readLine());
-		// r�ception/affichage de la r�ponse
+		
 			System.out.println(sin.readLine());
 				
 			
 		}
 		catch (IOException e) { System.err.println("Fin de la connexion"); }
-		// Refermer dans tous les cas la socket
+		
 		try { if (s != null) s.close(); } 
 		catch (IOException e2) { ; }		
 	}

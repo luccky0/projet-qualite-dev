@@ -29,7 +29,7 @@ public class ServiceInversion implements Service {
 			client.close();
 		}
 		catch (IOException e) {
-			//Fin du service d'inversion
+			
 		}
 	}
 	
