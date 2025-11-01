@@ -149,7 +149,6 @@ public class ServiceMessagerie implements Service {
         new Thread(this).start();
     }
 
-    // Petite classe interne pour représenter un message
     private static class Message {
         String expediteur;
         String destinataire;
